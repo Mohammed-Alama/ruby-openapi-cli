@@ -2,11 +2,12 @@ require 'thor'
 
 module RubyOpenapiCli
   class CommandBuilder
-    def initialize(namespace, operations, client, formatter)
+    def initialize(namespace, operations, client, formatter, default_format: :json)
       @namespace = namespace
       @operations = operations
       @client = client
       @formatter = formatter
+      @default_format = default_format
     end
 
     def build_thor_class
@@ -36,12 +37,17 @@ module RubyOpenapiCli
       op[:query_params].each do |param|
         klass.method_option underscore(param[:name]), type: option_type(param[:type]), required: !!param[:required], desc: "query param #{param[:name]}"
       end
+      op[:header_params].each do |param|
+        klass.method_option underscore(param[:name]), type: :string, required: !!param[:required], desc: "header param #{param[:name]}"
+      end
       klass.method_option :format, type: :string, default: '', desc: 'output format: json|yaml|table'
 
       client = @client
       formatter = @formatter
+      default_format = @default_format
       path_opts = op[:path_params].map { |p| [p, underscore(p)] }.to_h
       query_opts = op[:query_params].map { |param| [underscore(param[:name]), param[:name]] }.to_h
+      header_opts = op[:header_params].map { |param| [underscore(param[:name]), param[:name]] }.to_h
       klass.send(:define_method, name) do |*args|
         path = op[:path]
         body_arg = accepts_body ? args.pop : nil
@@ -54,6 +60,11 @@ module RubyOpenapiCli
           val = options[opt_name]
           params[param_name] = val if val
         end
+        headers = {}
+        header_opts.each do |opt_name, param_name|
+          val = options[opt_name]
+          headers[param_name] = val if val
+        end
         fmt = options[:format]
         fmt = fmt.empty? ? nil : fmt.to_sym
 
@@ -61,10 +72,11 @@ module RubyOpenapiCli
           method: op[:method],
           path: path,
           params: params,
+          headers: headers,
           body: body_arg && !body_arg.empty? ? body_arg : nil
         )
 
-        output = formatter.render(response.body, fmt || :json)
+        output = formatter.render(response.body, fmt || default_format)
         if (200..299).cover?(response.status)
           say(output)
         else

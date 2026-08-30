@@ -11,7 +11,7 @@ module RubyOpenapiCli
           parser = SpecParser.new(configuration)
           client = Client.new(configuration)
           formatter = Formatter.new
-          CommandBuilder.new(namespace, parser.operations, client, formatter).register_into(self)
+          CommandBuilder.new(namespace, parser.operations, client, formatter, default_format: configuration.default_format).register_into(self)
         end
       end
     end

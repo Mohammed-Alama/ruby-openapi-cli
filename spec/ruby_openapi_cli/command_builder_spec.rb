@@ -6,7 +6,7 @@ RSpec.describe RubyOpenapiCli::CommandBuilder do
       {
         namespace: 'bookstore', method: :get, path: '/books', operation_id: 'getBooks',
         path_params: [], query_params: [{ name: 'limit', required: false, type: 'integer' }],
-        header_params: [], request_body: false
+        header_params: [{ name: 'X-API-Version', required: true }], request_body: false
       },
       {
         namespace: 'bookstore', method: :get, path: '/books/{id}', operation_id: 'getBookById',
@@ -22,5 +22,30 @@ RSpec.describe RubyOpenapiCli::CommandBuilder do
     expect(klass.tasks['get_books'].options.keys.map(&:to_s)).to include('limit', 'format')
     expect(klass.tasks['get_book_by_id'].options.keys.map(&:to_s)).to include('id')
     expect(klass.tasks['get_book_by_id'].send(:required_options)).to include('id')
+  end
+
+  it 'uses the configured default format when --format is absent' do
+    client = double('client')
+    formatter = double('formatter')
+    response = double('response', status: 200, body: '{"a":1}')
+    allow(client).to receive(:call).and_return(response)
+    expect(formatter).to receive(:render).with('{"a":1}', :table)
+
+    builder = described_class.new('bookstore', operations, client, formatter, default_format: :table)
+    builder.build_thor_class.start(%w[get_books --x-api-version 2])
+  end
+
+  it 'sends header params to the client' do
+    client = double('client')
+    formatter = double('formatter')
+    response = double('response', status: 200, body: '{}')
+    expect(client).to receive(:call).with(
+      method: :get, path: '/books', params: {},
+      headers: { 'X-API-Version' => '2' }, body: nil
+    ).and_return(response)
+    expect(formatter).to receive(:render).with('{}', :json)
+
+    builder = described_class.new('bookstore', operations, client, formatter, default_format: :json)
+    builder.build_thor_class.start(%w[get_books --x-api-version 2])
   end
 end
