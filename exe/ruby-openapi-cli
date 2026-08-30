@@ -1,0 +1,17 @@
+#!/usr/bin/env ruby
+require 'ruby_openapi_cli'
+require 'ruby_openapi_cli/generator'
+
+case ARGV.first
+when 'new'
+  name = ARGV[1]
+  abort 'Usage: ruby-openapi-cli new NAME [--spec URL] [--namespace NAME]' unless name
+  spec = ARGV[ARGV.index('--spec') + 1] if ARGV.include?('--spec')
+  spec ||= 'https://api.example.com/openapi.yaml'
+  namespace = ARGV[ARGV.index('--namespace') + 1] if ARGV.include?('--namespace')
+  namespace ||= name.gsub(/-/, '_')
+  RubyOpenapiCli::Generator.new.generate(name: name, spec: spec, namespace: namespace, dir: '.')
+  puts "Created #{name}"
+else
+  RubyOpenapiCli.registry.start(ARGV)
+end
