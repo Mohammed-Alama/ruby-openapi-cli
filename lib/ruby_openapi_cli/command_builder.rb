@@ -29,7 +29,9 @@ module RubyOpenapiCli
       source = @use_operation_ids && op[:operation_id] ? op[:operation_id] : op[:path_name]
       name = underscore(source)
       accepts_body = op[:request_body]
-      signature = op[:path_params].map { |p| "[--#{underscore(p)}]" } + (accepts_body ? ['[BODY]'] : [])
+      signature = op[:path_params].map { |p| "[--#{underscore(p)}]" }
+      signature << '[--field key=value]' if accepts_body
+      signature << '[--input JSON]' if accepts_body
 
       klass.desc("#{name} #{signature.join(' ')}", "#{op[:method].to_s.upcase} #{op[:path]}")
 
@@ -42,17 +44,21 @@ module RubyOpenapiCli
       op[:header_params].each do |param|
         klass.method_option underscore(param[:name]), type: :string, required: !!param[:required], desc: "header param #{param[:name]}"
       end
+      if accepts_body
+        klass.method_option :field, type: :string, repeatable: true, desc: 'Send a form field (repeatable), e.g. --field title=Dune'
+        klass.method_option :input, type: :string, desc: 'Send a raw JSON request body'
+      end
       klass.method_option :format, type: :string, default: '', desc: 'output format: json|yaml|table'
 
       client = @client
       formatter = @formatter
       default_format = @default_format
+      body_media_types = op[:request_body_media_types] || []
       path_opts = op[:path_params].map { |p| [p, underscore(p)] }.to_h
       query_opts = op[:query_params].map { |param| [underscore(param[:name]), param[:name]] }.to_h
       header_opts = op[:header_params].map { |param| [underscore(param[:name]), param[:name]] }.to_h
       klass.send(:define_method, name) do |*args|
         path = op[:path]
-        body_arg = accepts_body ? args.pop : nil
         path_opts.each do |param, opt_name|
           val = options[opt_name]
           path = path.gsub("{#{param}}", val.to_s) if val
@@ -67,6 +73,36 @@ module RubyOpenapiCli
           val = options[opt_name]
           headers[param_name] = val if val
         end
+
+        body = nil
+        body_type = nil
+        if accepts_body
+          field_hash = (options[:field] || []).each_with_object({}) do |kv, h|
+            key, _, value = kv.partition('=')
+            h[key] = value
+          end
+          input = options[:input]
+
+          if !field_hash.empty? && input
+            say('Cannot use both --field and --input', :red)
+            exit 1
+          end
+
+          if !field_hash.empty?
+            body = field_hash
+            body_type = if field_hash.any? { |_, v| v.to_s.start_with?('@') }
+                          :multipart
+                        elsif body_media_types.include?('application/x-www-form-urlencoded')
+                          :form
+                        else
+                          :json
+                        end
+          elsif input
+            body = input
+            body_type = :json
+          end
+        end
+
         fmt = options[:format]
         fmt = fmt.empty? ? nil : fmt.to_sym
 
@@ -75,7 +111,8 @@ module RubyOpenapiCli
           path: path,
           params: params,
           headers: headers,
-          body: body_arg && !body_arg.empty? ? body_arg : nil
+          body: body,
+          body_type: body_type
         )
 
         output = formatter.render(response.body, fmt || default_format)

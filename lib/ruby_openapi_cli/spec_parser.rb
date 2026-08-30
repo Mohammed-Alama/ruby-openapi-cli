@@ -85,7 +85,8 @@ module RubyOpenapiCli
         path_params: path_params,
         query_params: query_params,
         header_params: header_params,
-        request_body: !operation.request_body.nil?
+        request_body: !operation.request_body.nil?,
+        request_body_media_types: operation.request_body&.content&.keys || []
       }
     end
 

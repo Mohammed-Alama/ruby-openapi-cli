@@ -18,6 +18,22 @@ registry.start(ARGV)
 
 Run: `ruby bin/my-cli get_books --limit 2`
 
+### Sending a request body
+
+Commands that accept a body take `--field` (repeatable) to build a field map, or
+`--input` to send raw JSON. `--field` and `--input` are mutually exclusive.
+
+```bash
+# Form fields (JSON unless the spec declares URL-encoded)
+ruby bin/my-cli create_book --field title=Dune --field year=1965
+
+# Raw JSON body
+ruby bin/my-cli create_book --input '{"title":"Dune"}'
+
+# File upload (a --field value starting with @ is sent as multipart/form-data)
+ruby bin/my-cli upload_cover --field book_id=1 --field cover=@/path/cover.jpg
+```
+
 ## Generator
 
 ```bash

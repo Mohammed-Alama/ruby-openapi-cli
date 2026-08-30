@@ -18,5 +18,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'thor', '>= 1.0'
   spec.add_dependency 'faraday', '>= 2.0'
   spec.add_dependency 'faraday-retry', '>= 2.0'
+  spec.add_dependency 'faraday-multipart', '>= 1.0'
+  spec.add_dependency 'mime-types', '>= 3.0'
   spec.add_dependency 'openapi3_parser', '>= 0.10'
 end
