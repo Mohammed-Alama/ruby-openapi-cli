@@ -40,6 +40,7 @@ RSpec.describe RubyOpenapiCli::SpecParser do
   end
 
   it 'caches a remote spec and reuses it within the ttl without re-fetching' do
+    FileUtils.rm_rf(File.join(Dir.tmpdir, 'ruby_openapi_cli'))
     body = File.read(File.expand_path('../fixtures/bookstore.yaml', __dir__))
     stub_request(:get, 'https://api.example.com/cached.yaml').to_return(status: 200, body: body)
     config = RubyOpenapiCli::Configuration.new('https://api.example.com/cached.yaml', 'bookstore') do |c|
@@ -50,8 +51,9 @@ RSpec.describe RubyOpenapiCli::SpecParser do
     parser = described_class.new(config)
     expect(parser.operations.length).to eq(3)
 
-    # Second parse within ttl must not hit the network again.
+    # Second parse within ttl must not hit the network again; the cache
+    # guarantees only one fetch total across both parses.
     described_class.new(config).operations
-    expect(WebMock).not_to have_requested(:get, 'https://api.example.com/cached.yaml')
+    expect(a_request(:get, 'https://api.example.com/cached.yaml')).to have_been_made.once
   end
 end
