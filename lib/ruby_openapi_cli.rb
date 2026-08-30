@@ -1,6 +1,7 @@
 require 'ruby_openapi_cli/version'
 require 'ruby_openapi_cli/configuration'
 require 'ruby_openapi_cli/registry'
+require 'ruby_openapi_cli/spec_parser'
 
 module RubyOpenapiCli
   class << self

@@ -1,0 +1,48 @@
+openapi: 3.0.3
+info:
+  title: Bookstore API
+  version: 1.0.0
+paths:
+  /books:
+    get:
+      operationId: getBooks
+      summary: List books
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of books
+    post:
+      operationId: createBook
+      summary: Create a book
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Created
+  /books/{id}:
+    get:
+      operationId: getBookById
+      summary: Get a book
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: A book
+        '404':
+          description: Not found
