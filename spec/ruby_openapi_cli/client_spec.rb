@@ -33,4 +33,24 @@ RSpec.describe RubyOpenapiCli::Client do
     client = described_class.new(make_config(auth_token: 'sekret'))
     expect(client.call(method: :get, path: '/books').status).to eq(200)
   end
+
+  it 'sends a form-urlencoded body when body_type is :form' do
+    stub_request(:post, 'https://api.bookstore.example/books')
+      .with(body: 'title=Dune')
+      .to_return(status: 201, body: '{"id":1}')
+    client = described_class.new(make_config)
+    expect(client.call(method: :post, path: '/books', body: { 'title' => 'Dune' }, body_type: :form).status).to eq(201)
+  end
+
+  it 'sends a multipart request when body_type is :multipart' do
+    path = File.join(Dir.mktmpdir, 'cover.jpg')
+    File.write(path, 'jpeg-data')
+    stub_request(:post, 'https://api.bookstore.example/upload')
+      .to_return(status: 200, body: '{}')
+    client = described_class.new(make_config)
+    response = client.call(method: :post, path: '/upload', body: { 'cover' => "@#{path}" }, body_type: :multipart)
+    expect(response.status).to eq(200)
+    signature = WebMock::RequestRegistry.instance.requested_signatures.hash.keys.first
+    expect(signature.headers['Content-Type']).to match(%r{\Amultipart/form-data})
+  end
 end
