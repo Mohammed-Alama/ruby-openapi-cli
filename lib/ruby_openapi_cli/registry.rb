@@ -1,3 +1,8 @@
+require 'ruby_openapi_cli/spec_parser'
+require 'ruby_openapi_cli/client'
+require 'ruby_openapi_cli/formatter'
+require 'ruby_openapi_cli/command_builder'
+
 module RubyOpenapiCli
   class Registry
     def initialize
@@ -20,6 +25,21 @@ module RubyOpenapiCli
 
     def namespaces
       @apis.keys
+    end
+
+    def start(argv)
+      build_thor_class.start(argv)
+    end
+
+    def build_thor_class
+      klass = Class.new(Thor)
+      each do |namespace, configuration|
+        parser = SpecParser.new(configuration)
+        client = Client.new(configuration)
+        formatter = Formatter.new
+        CommandBuilder.new(namespace, parser.operations, client, formatter).register_into(klass)
+      end
+      klass
     end
   end
 end
