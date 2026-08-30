@@ -24,6 +24,33 @@ RSpec.describe RubyOpenapiCli::SpecParser do
     expect(get_by_id[:path_params]).to eq(['id'])
   end
 
+  it 'computes path-based command names, disambiguating colliding paths' do
+    spec_path = File.expand_path('../fixtures/bookstore.yaml', __dir__)
+    parser = described_class.new(make_config(spec_path))
+    ops = parser.operations
+    names = ops.to_h { |o| ["#{o[:method]} #{o[:path]}", o[:path_name]] }
+    expect(names).to eq('get /books' => 'get-books', 'post /books' => 'post-books', 'get /books/{id}' => 'get-books-id')
+  end
+
+  it 'keeps operation_id as the raw spec value (nil when absent)' do
+    spec = <<~YAML
+      openapi: 3.0.3
+      info: { title: T, version: 1.0.0 }
+      paths:
+        /things:
+          get:
+            responses:
+              '200': { description: ok }
+    YAML
+    path = File.join(Dir.tmpdir, "noopid-#{rand(1000)}.yaml")
+    File.write(path, spec)
+    parser = described_class.new(make_config(path))
+    op = parser.operations.first
+    expect(op[:operation_id]).to be_nil
+    expect(op[:path_name]).to eq('get-things')
+    FileUtils.rm_f(path)
+  end
+
   it 'fetches and parses a remote spec over HTTP' do
     body = File.read(File.expand_path('../fixtures/bookstore.yaml', __dir__))
     stub_request(:get, 'https://api.example.com/openapi.yaml').to_return(status: 200, body: body)

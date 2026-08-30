@@ -7,6 +7,7 @@ RSpec.describe RubyOpenapiCli::Configuration do
     expect(config.base_url).to be_nil
     expect(config.cache_ttl).to eq(300)
     expect(config.default_format).to eq(:json)
+    expect(config.use_operation_ids).to be(false)
   end
 
   it 'allows setting attributes in a block' do

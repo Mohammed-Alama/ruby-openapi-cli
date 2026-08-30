@@ -2,12 +2,13 @@ require 'thor'
 
 module RubyOpenapiCli
   class CommandBuilder
-    def initialize(namespace, operations, client, formatter, default_format: :json)
+    def initialize(namespace, operations, client, formatter, default_format: :json, use_operation_ids: false)
       @namespace = namespace
       @operations = operations
       @client = client
       @formatter = formatter
       @default_format = default_format
+      @use_operation_ids = use_operation_ids
     end
 
     def build_thor_class
@@ -25,7 +26,8 @@ module RubyOpenapiCli
     private
 
     def register_operation(klass, op)
-      name = op[:operation_id].gsub(/([a-z\d])([A-Z])/, '\1_\2').downcase.gsub(/-/, '_')
+      source = @use_operation_ids && op[:operation_id] ? op[:operation_id] : op[:path_name]
+      name = underscore(source)
       accepts_body = op[:request_body]
       signature = op[:path_params].map { |p| "[--#{underscore(p)}]" } + (accepts_body ? ['[BODY]'] : [])
 
