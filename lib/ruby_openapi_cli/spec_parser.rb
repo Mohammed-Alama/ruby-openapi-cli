@@ -20,7 +20,7 @@ module RubyOpenapiCli
     end
 
     def operations
-      document.paths.flat_map do |path_item_name, path_item|
+      ops = document.paths.flat_map do |path_item_name, path_item|
         path_item.map do |method_name, operation|
           next unless HttpVerbs.include?(method_name.to_sym)
           next unless operation
@@ -28,6 +28,8 @@ module RubyOpenapiCli
           build_operation(method_name, path_item_name, operation)
         end.compact
       end
+      disambiguate!(ops)
+      ops
     end
 
     private
@@ -78,7 +80,8 @@ module RubyOpenapiCli
         namespace: @configuration.namespace,
         method: method_name.to_sym,
         path: path,
-        operation_id: operation.operation_id || "#{method_name}-#{slugify(path)}",
+        operation_id: operation.operation_id,
+        path_name: path_name(method_name, path, path_params),
         path_params: path_params,
         query_params: query_params,
         header_params: header_params,
@@ -90,8 +93,26 @@ module RubyOpenapiCli
       param.to_h['required']
     end
 
-    def slugify(path)
-      path.gsub(/[{}]/, '').tr('/', '-')
+    # Path-based command name, e.g. GET /books -> "get-books". Path params are
+    # stripped. A trailing path parameter is appended when stripping would make
+    # two operations collide (e.g. /books and /books/{id}).
+    def path_name(method, path, path_params)
+      stripped = path.gsub(/\{[^}]+\}/, '')
+      segments = [method.to_s] + stripped.split('/').reject(&:empty?)
+      base = segments.join('-')
+      { base: base, trailing_param: path_params.last }
+    end
+
+    def disambiguate!(ops)
+      collisions = ops.group_by { |op| op[:path_name][:base] }.select { |_, group| group.size > 1 }.keys
+      ops.each do |op|
+        pair = op[:path_name]
+        name = pair[:base]
+        if collisions.include?(name) && pair[:trailing_param]
+          name = "#{name}-#{pair[:trailing_param]}"
+        end
+        op[:path_name] = name
+      end
     end
   end
 end
