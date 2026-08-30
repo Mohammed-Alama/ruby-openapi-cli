@@ -6,6 +6,7 @@ require 'ruby_openapi_cli/client'
 require 'ruby_openapi_cli/formatter'
 require 'ruby_openapi_cli/command_builder'
 require 'ruby_openapi_cli/cli'
+require 'ruby_openapi_cli/railtie' if defined?(Rails::Railtie)
 
 module RubyOpenapiCli
   class << self
